@@ -14,46 +14,41 @@
  * limitations under the License.
  */
 
-import org.infai.seits.sepl.operators.Config;
-import org.infai.seits.sepl.operators.Message;
-import org.infai.seits.sepl.operators.OperatorInterface;
-import org.infai.seits.sepl.operators.Stream;
-
-import java.io.IOException;
+import org.infai.ses.senergy.operators.BaseOperator;
+import org.infai.ses.senergy.operators.Config;
+import org.infai.ses.senergy.operators.Stream;
+import org.infai.ses.senergy.utils.ConfigProvider;
+import semantic.SemanticRepo;
 
 public class Operator {
 
-    public static void main(String[] args) {
-        Stream stream  = new Stream();
-        Config config = new Config();
-        stream.start(new OperatorConverter(config.getConfigValue("converter-service-url", ""),
-                config.getConfigValue("input-unit", ""),
-                config.getConfigValue("output-unit", "")));
-    }
-}
+    public static void main(String[] args) throws Exception {
+        FixConfig fix = new FixConfig();
+        Config config = ConfigProvider.getConfig();
 
-
-
-class OperatorConverter implements OperatorInterface {
-    private Converter converter;
-
-    public OperatorConverter(String url, String inputUnit, String outputUnit) {
-        converter = new Converter(url, inputUnit, outputUnit);
-    }
-
-    @Override
-    public void run(Message message) {
-        try {
-            Object value = converter.convert(message.getInput("value").getValue());
-            message.output("value", value);
-        } catch (IOException e) {
-            System.err.println("Error converting a value, skipping message....");
-            e.printStackTrace();
+        String inputUnit = config.getConfigValue("input-unit", "");
+        String outputUnit = config.getConfigValue("output-unit", "");
+        SemanticRepo semantic = null;
+        String prefix = fix.getValue(FixConfig.PREFIX_CHARACTERISTIC_ID);
+        if (!inputUnit.startsWith(prefix)) {
+            semantic = new SemanticRepo(fix.getValue(FixConfig.SEMANTIC_REPO_URL), fix.getValue(FixConfig.TOKEN));
+            inputUnit = semantic.byName(inputUnit).getId();
         }
-    }
+        if (!outputUnit.startsWith(prefix)) {
+            if (semantic == null) {
+                semantic = new SemanticRepo(fix.getValue(FixConfig.SEMANTIC_REPO_URL), fix.getValue(FixConfig.TOKEN));
+            }
+            outputUnit = semantic.byName(outputUnit).getId();
+        }
+        System.out.println("inputUnit: " + inputUnit);
+        System.out.println("outputUnit: " + outputUnit);
 
-    @Override
-    public void config(Message message) {
-        message.addInput("value");
+        BaseOperator op = new OperatorConverter(fix.getValue(FixConfig.CONVERTER_URL),
+                inputUnit,
+                outputUnit);
+        Stream stream  = new Stream();
+        stream.start(op);
+
+
     }
 }

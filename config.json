@@ -1,0 +1,6 @@
+{
+    "semantic_repo_url": "http://semantic-repository:8080",
+    "token": "<token>",
+    "prefix_characteristic_id": "urn:infai:ses:characteristic:",
+    "converter_url": "http://converter:8080/conversions"
+}
